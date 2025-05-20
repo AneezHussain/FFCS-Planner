@@ -5,10 +5,17 @@ import FacultyPreferenceModal from './FacultyPreferenceModal';
 interface CourseSlotSelectorProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { courseName: string; selectedSlots: string[]; credits: number; facultyPreferences?: string[] }) => void;
+  onSubmit: (data: { 
+    courseName: string; 
+    selectedSlots: string[]; 
+    credits: number; 
+    facultyPreferences?: string[]; 
+    includeLabCourse?: boolean; 
+    facultyLabAssignments?: Map<string, string[]>;
+  }) => void;
   preferredSlot: 'morning' | 'evening' | 'custom';
   existingSlots?: string[]; // Add this prop to track already selected slots
-  editingCourse?: { name: string; slots: string[]; credits: number; facultyPreferences?: string[] }; // Add prop for editing
+  editingCourse?: { name: string; slots: string[]; credits: number; facultyPreferences?: string[]; facultyLabAssignments?: Array<{ facultyName: string; slots: string[] }> }; // Add prop for editing
 }
 
 const CourseSlotSelector: React.FC<CourseSlotSelectorProps> = ({ 
@@ -23,7 +30,6 @@ const CourseSlotSelector: React.FC<CourseSlotSelectorProps> = ({
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [slotText, setSlotText] = useState('');
   const [credits, setCredits] = useState(3); // Default to 3 credits
-  const [activeTab, setActiveTab] = useState<'theory' | 'lab'>('theory');
   const [isFacultyModalOpen, setIsFacultyModalOpen] = useState(false);
   const [tempCourseData, setTempCourseData] = useState<{courseName: string; selectedSlots: string[]; credits: number} | null>(null);
 
@@ -44,58 +50,18 @@ const CourseSlotSelector: React.FC<CourseSlotSelectorProps> = ({
         setSlotText('');
       }
       setTempCourseData(null);
-      setActiveTab('theory');
     }
   }, [isOpen, editingCourse]);
 
-  // Slot patterns
+  // Slot patterns - only theory slots
   const morningTheorySlots = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'TA1', 'TB1', 'TC1', 'TD1', 'TE1', 'TF1', 'TG1', 'TAA1', 'TCC1'];
   const eveningTheorySlots = ['A2', 'B2', 'C2', 'D2', 'E2', 'F2', 'G2', 'TA2', 'TB2', 'TC2', 'TD2', 'TE2', 'TF2', 'TAA2', 'TBB2', 'TCC2', 'TDD2'];
-  const morningLabSlots = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8', 'L9', 'L10', 'L11', 'L12', 'L13', 'L14', 'L15', 'L16', 'L17', 'L18', 'L19', 'L20', 'L21', 'L22', 'L23', 'L24', 'L25', 'L26', 'L27', 'L28', 'L29', 'L30'];
-  const eveningLabSlots = ['L31', 'L32', 'L33', 'L34', 'L35', 'L36', 'L37', 'L38', 'L39', 'L40', 'L41', 'L42', 'L43', 'L44', 'L45', 'L46', 'L47', 'L48', 'L49', 'L50', 'L51', 'L52', 'L53', 'L54', 'L55', 'L56', 'L57', 'L58', 'L59', 'L60'];
-
-  // Define slot conflicts as pairs of conflicting slots
-  const slotConflictPairs = [
-    // Monday conflicts
-    ['A1', 'L1'], ['F1', 'L2'], ['D1', 'L3'], ['TB1', 'L4'], ['TG1', 'L5'],
-    ['A2', 'L31'], ['F2', 'L32'], ['D2', 'L33'], ['TB2', 'L34'], ['TG2', 'L35'],
-    
-    // Tuesday conflicts
-    ['B1', 'L7'], ['G1', 'L8'], ['E1', 'L9'], ['TC1', 'L10'], ['TAA1', 'L11'],
-    ['B2', 'L37'], ['G2', 'L38'], ['E2', 'L39'], ['TC2', 'L40'], ['TAA2', 'L41'],
-    
-    // Wednesday conflicts
-    ['C1', 'L13'], ['A1', 'L14'], ['F1', 'L15'],
-    ['C2', 'L43'], ['A2', 'L44'], ['F2', 'L45'], ['TD2', 'L46'], ['TBB2', 'L47'],
-    
-    // Thursday conflicts
-    ['D1', 'L19'], ['B1', 'L20'], ['G1', 'L21'], ['TE1', 'L22'], ['TCC1', 'L23'],
-    ['D2', 'L49'], ['B2', 'L50'], ['G2', 'L51'], ['TE2', 'L52'], ['TCC2', 'L53'],
-    
-    // Friday conflicts
-    ['E1', 'L25'], ['C1', 'L26'], ['TA1', 'L27'], ['TF1', 'L28'], ['TD1', 'L29'],
-    ['E2', 'L55'], ['C2', 'L56'], ['TA2', 'L57'], ['TF2', 'L58'], ['TDD2', 'L59']
-  ];
-
-  // Create a map for quick lookup of conflicting slots
-  const slotConflictsMap = new Map<string, string[]>();
-  
-  // Populate the map with conflicting slots (bidirectional)
-  slotConflictPairs.forEach(([slot1, slot2]) => {
-    // For slot1, add slot2 as a conflicting slot
-    const slot1Conflicts = slotConflictsMap.get(slot1) || [];
-    slotConflictsMap.set(slot1, [...slot1Conflicts, slot2]);
-    
-    // For slot2, add slot1 as a conflicting slot
-    const slot2Conflicts = slotConflictsMap.get(slot2) || [];
-    slotConflictsMap.set(slot2, [...slot2Conflicts, slot1]);
-  });
 
   // Function to parse slot text and identify valid slots
   const parseSlotText = (text: string) => {
     // Split the input by + or space or comma
     const inputSlots = text.split(/[+\s,]+/).filter(Boolean);
-    const allValidSlots = [...morningTheorySlots, ...eveningTheorySlots, ...morningLabSlots, ...eveningLabSlots];
+    const allValidSlots = [...morningTheorySlots, ...eveningTheorySlots];
     
     // Filter to get only valid slots
     const validSlots = inputSlots.filter(slot => allValidSlots.includes(slot));
@@ -116,7 +82,7 @@ const CourseSlotSelector: React.FC<CourseSlotSelectorProps> = ({
     setSlotText(newSelectedSlots.join('+'));
   };
 
-  // Function to check if a slot is already taken in other courses or blocked by theory-lab conflicts
+  // Function to check if a slot is already taken in other courses
   const isSlotTaken = (slot: string) => {
     // If we're editing a course, don't consider its own slots as taken
     if (editingCourse && editingCourse.slots.includes(slot)) {
@@ -124,25 +90,7 @@ const CourseSlotSelector: React.FC<CourseSlotSelectorProps> = ({
     }
 
     // Check if the slot is already taken by another course
-    if (existingSlots.includes(slot)) {
-      return true;
-    }
-
-    // Check if any conflicting slot is already taken or selected
-    const conflictingSlots = slotConflictsMap.get(slot) || [];
-    for (const conflictSlot of conflictingSlots) {
-      // Check if a conflicting slot is already selected in this course
-      if (selectedSlots.includes(conflictSlot) && !(editingCourse && editingCourse.slots.includes(conflictSlot))) {
-        return true;
-      }
-
-      // Check if a conflicting slot is already taken in other courses
-      if (existingSlots.includes(conflictSlot)) {
-        return true;
-      }
-    }
-    
-    return false;
+    return existingSlots.includes(slot);
   };
 
   const handleCourseDetailSubmit = () => {
@@ -165,7 +113,8 @@ const CourseSlotSelector: React.FC<CourseSlotSelectorProps> = ({
         courseName,
         selectedSlots,
         credits,
-        facultyPreferences: editingCourse?.facultyPreferences || []
+        facultyPreferences: editingCourse?.facultyPreferences || [],
+        includeLabCourse: false
       });
       
       // Reset states and close modal
@@ -174,15 +123,19 @@ const CourseSlotSelector: React.FC<CourseSlotSelectorProps> = ({
     }
   };
 
-  const handleFacultyPreferenceSubmit = (facultyPreferences: string[]) => {
-    if (tempCourseData) {
-      // Submit the complete data including faculty preferences
+  const handleFacultyPreferenceSubmit = (
+    facultyPreferencesFromModal: string[], 
+    includeLabCourse?: boolean, 
+    facultyLabAssignmentsFromModal?: Map<string, string[]>
+  ) => {
+    if (tempCourseData) { 
       onSubmit({
         ...tempCourseData,
-        facultyPreferences
+        facultyPreferences: facultyPreferencesFromModal,
+        includeLabCourse: includeLabCourse, 
+        facultyLabAssignments: facultyLabAssignmentsFromModal
       });
       
-      // Reset states
       resetForm();
       setIsFacultyModalOpen(false);
     }
@@ -208,18 +161,9 @@ const CourseSlotSelector: React.FC<CourseSlotSelectorProps> = ({
     setTempCourseData(null);
   };
 
-  // Get slot rows based on the active tab and preferred slot
+  // Get slot rows based on the preferred slot
   const getSlotRows = () => {
-    let slots = [];
-    if (activeTab === 'theory') {
-      // For theory slots: morning = morningTheorySlots, evening = eveningTheorySlots
-      slots = preferredSlot === 'evening' ? eveningTheorySlots : morningTheorySlots;
-    } else {
-      // For lab slots:
-      // - morning preferred shows evening lab slots (L31-L60)
-      // - evening preferred shows morning lab slots (L1-L30)
-      slots = preferredSlot === 'morning' ? eveningLabSlots : morningLabSlots;
-    }
+    const slots = preferredSlot === 'evening' ? eveningTheorySlots : morningTheorySlots;
     
     // Create rows of 5 slots each for consistent layout
     const rows = [];
@@ -305,34 +249,6 @@ const CourseSlotSelector: React.FC<CourseSlotSelectorProps> = ({
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               placeholder="Enter slot pattern (e.g., A1+TG1)"
             />
-          </div>
-
-          {/* Slot Category Tabs */}
-          <div className="mb-4">
-            <div className="border-b border-gray-200">
-              <nav className="flex -mb-px">
-                <button
-                  onClick={() => setActiveTab('theory')}
-                  className={`py-2 px-4 text-sm font-medium border-b-2 ${
-                    activeTab === 'theory'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {preferredSlot === 'morning' ? 'Theory Morning' : preferredSlot === 'evening' ? 'Theory Evening' : 'Theory Custom'}
-                </button>
-                <button
-                  onClick={() => setActiveTab('lab')}
-                  className={`py-2 px-4 text-sm font-medium border-b-2 ${
-                    activeTab === 'lab'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {preferredSlot === 'morning' ? 'Lab Evening' : preferredSlot === 'evening' ? 'Lab Morning' : 'Lab Custom'}
-                </button>
-              </nav>
-            </div>
           </div>
 
           {/* Slots Grid */}
