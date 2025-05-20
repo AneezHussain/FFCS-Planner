@@ -5,9 +5,22 @@ import FacultyPreferenceModal from './FacultyPreferenceModal';
 interface CustomPreferredSlotModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { courseName: string; selectedSlots: string[]; credits: number; facultyPreferences?: string[] }) => void;
+  onSubmit: (data: { 
+    courseName: string; 
+    selectedSlots: string[]; 
+    credits: number; 
+    facultyPreferences?: string[]; 
+    includeLabCourse?: boolean;
+    facultyLabAssignments?: Map<string, string[]>;
+  }) => void;
   existingSlots?: string[];
-  editingCourse?: { name: string; slots: string[]; credits: number; facultyPreferences?: string[] };
+  editingCourse?: { 
+    name: string; 
+    slots: string[]; 
+    credits: number; 
+    facultyPreferences?: string[]; 
+    facultyLabAssignments?: Array<{ facultyName: string; slots: string[] }>;
+  };
   onTabChange?: (tab: 'theory-morning' | 'theory-evening' | 'lab-morning' | 'lab-evening') => void;
   activeTab?: 'theory-morning' | 'theory-evening' | 'lab-morning' | 'lab-evening';
 }
@@ -177,15 +190,19 @@ const CustomPreferredSlotModal: React.FC<CustomPreferredSlotModalProps> = ({
   };
 
   // Handle faculty preference submission
-  const handleFacultyPreferenceSubmit = (facultyPreferences: string[]) => {
-    if (tempCourseData) {
-      // Submit with faculty preferences
+  const handleFacultyPreferenceSubmit = (
+    facultyPreferencesFromModal: string[], 
+    includeLabCourse?: boolean, 
+    facultyLabAssignmentsFromModal?: Map<string, string[]>
+  ) => {
+    if (tempCourseData) { 
       onSubmit({
         ...tempCourseData,
-        facultyPreferences
+        facultyPreferences: facultyPreferencesFromModal,
+        includeLabCourse: includeLabCourse,
+        facultyLabAssignments: facultyLabAssignmentsFromModal
       });
       
-      // Reset states and close modals
       setTempCourseData(null);
       setIsFacultyModalOpen(false);
       onClose();
@@ -201,7 +218,8 @@ const CustomPreferredSlotModal: React.FC<CustomPreferredSlotModalProps> = ({
         courseName,
         selectedSlots,
         credits,
-        facultyPreferences: editingCourse?.facultyPreferences || []
+        facultyPreferences: editingCourse?.facultyPreferences || [],
+        includeLabCourse: false
       });
       
       // Close modal
